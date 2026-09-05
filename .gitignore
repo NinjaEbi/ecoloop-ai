@@ -61,3 +61,7 @@ Thumbs.db
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Keep the trained EcoLoop model for deployment
+!models/ecoloop_yolo11n/
+!models/ecoloop_yolo11n/best.pt
