@@ -5,8 +5,7 @@ import L from 'leaflet';
 import './styles.css';
 import 'leaflet/dist/leaflet.css';
 
-const API = 'http://localhost:8000/api';
-
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 const formatLabel = (value: string | null | undefined) =>
   String(value ?? '')
     .replace(/_/g, ' ')
