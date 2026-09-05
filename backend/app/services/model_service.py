@@ -1,8 +1,9 @@
 from pathlib import Path
 from functools import lru_cache
 
-from PIL import Image
+import torch
 from ultralytics import YOLO
+
 
 MODEL_PATH = (
     Path(__file__).resolve().parents[3]
@@ -12,6 +13,19 @@ MODEL_PATH = (
 )
 
 CONFIDENCE_THRESHOLD = 0.50
+
+
+def get_inference_device():
+    """
+    Automatically select the best available inference device.
+
+    Local machine with NVIDIA CUDA:
+        -> cuda:0
+
+    Render / CPU-only server:
+        -> cpu
+    """
+    return 0 if torch.cuda.is_available() else "cpu"
 
 
 @lru_cache(maxsize=1)
@@ -25,10 +39,12 @@ def get_model():
 def predict_device(image_path: str) -> dict:
     model = get_model()
 
+    device = get_inference_device()
+
     results = model.predict(
         source=image_path,
         conf=CONFIDENCE_THRESHOLD,
-        device=0,
+        device=device,
         verbose=False,
     )
 
@@ -41,16 +57,24 @@ def predict_device(image_path: str) -> dict:
             "status": "unknown",
             "findings": [
                 "Image quality passed.",
-                "No supported device was confidently detected."
+                "No supported device was confidently detected.",
             ],
         }
 
     # Select the highest-confidence detection.
     best_index = int(result.boxes.conf.argmax())
 
-    confidence = float(result.boxes.conf[best_index].item())
-    class_id = int(result.boxes.cls[best_index].item())
-    class_name = str(result.names[class_id])
+    confidence = float(
+        result.boxes.conf[best_index].item()
+    )
+
+    class_id = int(
+        result.boxes.cls[best_index].item()
+    )
+
+    class_name = str(
+        result.names[class_id]
+    )
 
     DEVICE_MAP = {
         "Computer-Keyboard": "keyboard",
@@ -70,7 +94,7 @@ def predict_device(image_path: str) -> dict:
             "status": "unsupported",
             "findings": [
                 f"Model detected {class_name}.",
-                "This device category is not enabled in the Phase-1 application."
+                "This device category is not enabled in the Phase-1 application.",
             ],
         }
 
@@ -80,6 +104,6 @@ def predict_device(image_path: str) -> dict:
         "status": "supported",
         "findings": [
             f"AI detected {class_name}.",
-            f"Detection confidence: {confidence:.1%}."
+            f"Detection confidence: {confidence:.1%}.",
         ],
     }
