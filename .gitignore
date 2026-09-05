@@ -1,0 +1,63 @@
+# =========================
+# Frontend / Node
+# =========================
+node_modules/
+dist/
+
+# =========================
+# Python
+# =========================
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Local application data
+# =========================
+backend/ecoloop.db
+backend/uploads/
+
+# =========================
+# Datasets
+# =========================
+data/raw/
+data/processed/
+data/extracted/
+
+# =========================
+# ML models / training files
+# =========================
+models/**/*.pt
+models/**/*.onnx
+weights/
+*.pt
+*.onnx
+runs/
+
+# =========================
+# Generated / temporary work
+# =========================
+outputs/
+work/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Frontend generated TypeScript/build files
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
