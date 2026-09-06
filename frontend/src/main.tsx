@@ -480,6 +480,30 @@ function createMapIcon(
   });
 }
 
+function buildGoogleMapsSearchUrl(deviceType: string, action: string) {
+  const deviceLabels: Record<string, string> = {
+    smartphone: 'smartphone',
+    laptop: 'laptop',
+    tablet: 'tablet',
+    television: 'TV',
+    monitor: 'monitor',
+    keyboard: 'computer keyboard',
+    mouse: 'computer mouse',
+    printer: 'printer',
+    other: 'electronics device',
+  };
+  const deviceLabel = deviceLabels[deviceType] ?? 'electronics device';
+  const actionQueries: Record<string, string> = {
+    repair: `${deviceLabel} repair near me`,
+    refurbish: `${deviceLabel} refurbishment near me`,
+    sell: `sell used ${deviceLabel} near me`,
+    donate: `donate ${deviceLabel} near me`,
+    recycle: `${deviceLabel} recycling near me`,
+  };
+  const query = actionQueries[action.toLowerCase()] ?? `${deviceLabel} electronics service near me`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 function Stakeholders({ action, deviceType }: { action: string; deviceType: string }) {
   type Place = {
     id: string;
@@ -517,6 +541,7 @@ function Stakeholders({ action, deviceType }: { action: string; deviceType: stri
   const [searchMessage, setSearchMessage] = useState('');
   const [exhausted50km, setExhausted50km] = useState(false);
   const [externalSearchUrl, setExternalSearchUrl] = useState('');
+  const [osmServiceUnavailable, setOsmServiceUnavailable] = useState(false);
 
   const actionLabel = action ? formatLabel(action) : 'Nearby options';
   const deviceLabel = formatLabel(deviceType || 'device');
@@ -536,6 +561,7 @@ function Stakeholders({ action, deviceType }: { action: string; deviceType: stri
     setSearchMessage('');
     setExhausted50km(false);
     setExternalSearchUrl('');
+    setOsmServiceUnavailable(false);
     setSearchTier('targeted');
     setSelectedPlaceId(null);
     setAutoExpand(true);
@@ -646,7 +672,14 @@ function Stakeholders({ action, deviceType }: { action: string; deviceType: stri
       } catch (error) {
         console.error('Nearby places error:', error);
         setPlaces([]);
-        setPlacesError('Unable to load nearby places right now. Please try again.');
+        setLastRadiusWithResults(null);
+        setExternalSearchUrl(buildGoogleMapsSearchUrl(deviceType, action));
+        setOsmServiceUnavailable(true);
+        setExhausted50km(true);
+        setSearchMessage(
+          'The nearby map service could not be reached. EcoLoop did not invent a business; use the live Google Maps search below to review real alternatives.'
+        );
+        setPlacesError('Nearby map service temporarily unavailable.');
       } finally {
         setPlacesLoading(false);
       }
@@ -795,12 +828,12 @@ function Stakeholders({ action, deviceType }: { action: string; deviceType: stri
               {!placesLoading && placesError && (
                 <div className={`nearby-empty-v9 ${exhausted50km ? 'nearby-exhausted-v12' : ''}`}>
                   <div className="empty-icon-v9"><DeviceGlyph deviceType={deviceType} /></div>
-                  <strong>{exhausted50km ? 'We could not find a verified option' : `No mapped options within ${searchRadius} km`}</strong>
+                  <strong>{osmServiceUnavailable ? 'Live map service unavailable' : exhausted50km ? 'We could not find a verified option' : `No mapped options within ${searchRadius} km`}</strong>
                   <p>{searchMessage || placesError}</p>
                   {exhausted50km && <small className="nearby-apology-v12">Sorry — we know your time matters. We searched the available mapped options up to 50 km instead of sending you to an unverified place.</small>}
                   <div className="empty-actions-v9">
                     {!exhausted50km && searchRadius < 50 && <button type="button" className="primary-button" onClick={() => setSearchRadius(searchRadius === 10 ? 25 : 50)}>Expand to {searchRadius === 10 ? 25 : 50} km</button>}
-                    {exhausted50km && externalSearchUrl && <button type="button" className="primary-button" onClick={() => window.open(externalSearchUrl, '_blank', 'noopener,noreferrer')}>Open live Google Maps search ↗</button>}
+                    {externalSearchUrl && (exhausted50km || osmServiceUnavailable) && <button type="button" className="primary-button" onClick={() => window.open(externalSearchUrl, '_blank', 'noopener,noreferrer')}>Open live Google Maps search ↗</button>}
                     <button type="button" className="secondary-button" onClick={() => setSearchRadius(10)}>Search 10 km again</button>
                   </div>
                 </div>

@@ -6,6 +6,8 @@ from urllib.parse import quote
 import httpx
 from pathlib import Path
 
+import torch
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -80,7 +82,7 @@ def health():
             "service": "ecoloop-ai",
             "model_status": "ready",
             "model": "YOLO11n",
-            "device": "cuda:0",
+            "device": "cuda:0" if torch.cuda.is_available() else "cpu",
         }
 
     except Exception as exc:
@@ -606,10 +608,12 @@ def build_overpass_query(
                 f'nwr(around:{radius},{lat},{lng})[shop~"computer|electronics|mobile_phone|printer_ink|hifi"][mobile_phone:repair~"yes|only"];',
             ])
         else:
+            # Last-resort repair search: prefer real customer-facing
+            # electronics/computer repair leads. Do not include generic
+            # IT/company offices because they are not necessarily repair shops.
             clauses.extend([
                 f'nwr(around:{radius},{lat},{lng})[shop~"computer|electronics|mobile_phone|printer_ink|hifi|repair"];',
                 f'nwr(around:{radius},{lat},{lng})[craft="electronics_repair"];',
-                f'nwr(around:{radius},{lat},{lng})[office~"it|company"];',
             ])
 
     elif action_l in {'sell', 'refurbish'}:
@@ -684,6 +688,69 @@ def build_overpass_query(
     # De-duplicate clauses while preserving order.
     clauses = list(dict.fromkeys(clauses))
     return '[out:json][timeout:25];\n(\n' + '\n'.join(clauses) + '\n);\nout center tags;'
+
+
+def is_relevant_osm_place(tags: dict, device_type: str | None, action: str | None) -> bool:
+    """Reject unrelated OSM features before they reach the user.
+
+    Overpass queries are intentionally broad in the fallback tiers, so this
+    final allow-list prevents unrelated businesses (for example car dealers)
+    from appearing in an electronics e-waste result.
+    """
+    action_l = (action or "").lower()
+    shop = str(tags.get("shop") or "").lower()
+    craft = str(tags.get("craft") or "").lower()
+    amenity = str(tags.get("amenity") or "").lower()
+    profile = device_profile(device_type)
+    allowed_shops = set(profile.get("shops", []))
+
+    repair_shops = {
+        "computer", "electronics", "mobile_phone", "printer_ink",
+        "hifi", "repair",
+    }
+    resale_shops = {"second_hand", "pawnbroker", "charity"}
+    circular_shops = allowed_shops | resale_shops
+
+    if action_l == "repair":
+        return (
+            craft == "electronics_repair"
+            or tags.get("repair") in {"yes", "only"}
+            or any(
+                str(k).endswith(":repair")
+                and str(v).lower() in {"yes", "only"}
+                for k, v in tags.items()
+            )
+            or shop in repair_shops
+        )
+
+    if action_l in {"sell", "refurbish"}:
+        return (
+            shop in circular_shops
+            or tags.get("second_hand") in {"yes", "only"}
+        )
+
+    if action_l == "donate":
+        return (
+            shop == "charity"
+            or amenity in {"charity", "freeshop", "community_centre"}
+            or "donation_of_goods" in tags
+        )
+
+    if action_l == "recycle":
+        return (
+            amenity in {"recycling", "waste_transfer_station", "waste_disposal"}
+            or any(
+                str(k).startswith("recycling:")
+                and str(v).lower() in {"yes", "only"}
+                for k, v in tags.items()
+            )
+            or (
+                shop in allowed_shops
+                and ("recycling" in tags or "donation_of_goods" in tags)
+            )
+        )
+
+    return shop in allowed_shops or craft == "electronics_repair"
 
 
 def classify_osm_place(tags: dict, requested_action: str | None) -> str:
@@ -797,6 +864,7 @@ async def run_overpass_query(query: str) -> tuple[dict | None, str | None]:
         "https://overpass-api.de/api/interpreter",
     ]
     last_error: str | None = None
+    last_empty: dict | None = None
     for overpass_url in overpass_urls:
         try:
             async with httpx.AsyncClient(
@@ -815,10 +883,55 @@ async def run_overpass_query(query: str) -> tuple[dict | None, str | None]:
                 candidate = response.json()
                 if not isinstance(candidate, dict) or "elements" not in candidate:
                     raise ValueError("Invalid Overpass response format.")
-                return candidate, None
+
+                # A successful mirror can legitimately return zero elements.
+                # Keep trying the remaining mirrors before giving up, because
+                # OSM/Overpass coverage can differ between server instances.
+                if candidate.get("elements"):
+                    return candidate, None
+
+                last_empty = candidate
+                continue
         except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
             last_error = str(exc)
+    # If at least one mirror responded successfully but all returned zero
+    # places, report a genuine data-coverage miss rather than an API failure.
+    if last_empty is not None:
+        return last_empty, None
     return None, last_error
+
+
+def build_google_maps_search_url(device_type: str, action: str | None) -> str:
+    """Build a live Google Maps fallback query from the requested device/action.
+
+    This is a search hand-off, not a claim that Google Maps has verified a
+    particular business. The user can review the live results before visiting.
+    """
+    device_labels = {
+        "smartphone": "smartphone",
+        "laptop": "laptop",
+        "tablet": "tablet",
+        "television": "TV",
+        "monitor": "monitor",
+        "keyboard": "computer keyboard",
+        "mouse": "computer mouse",
+        "printer": "printer",
+        "other": "electronics device",
+    }
+    device_label = device_labels.get(device_type, device_type.replace("_", " "))
+    action_l = (action or "").lower()
+    action_queries = {
+        "repair": f"{device_label} repair near me",
+        "refurbish": f"{device_label} refurbishment near me",
+        "sell": f"sell used {device_label} near me",
+        "donate": f"donate {device_label} near me",
+        "recycle": f"{device_label} recycling near me",
+    }
+    query = action_queries.get(
+        action_l,
+        f"{device_label} electronics service near me",
+    )
+    return f"https://www.google.com/maps/search/?api=1&query={quote(query)}"
 
 
 @app.get("/api/stakeholders/nearby")
@@ -877,29 +990,40 @@ async def nearby(
             last_error = error
             continue
         if candidate.get("elements"):
-            osm_data = candidate
-            used_tier = tier
-            break
+            # A broad OSM query may still contain irrelevant objects. Check
+            # whether at least one element belongs to the requested domain
+            # before accepting this tier.
+            relevant_elements = [
+                element
+                for element in candidate.get("elements", [])
+                if is_relevant_osm_place(
+                    element.get("tags", {}) or {}, device_type, action
+                )
+            ]
+            if relevant_elements:
+                osm_data = {**candidate, "elements": relevant_elements}
+                used_tier = tier
+                break
 
-    # If every query successfully returned zero elements, this is a genuine
-    # data-coverage miss rather than an API outage.
+    # Never fail the whole user flow just because the public Overpass service
+    # is temporarily unavailable. Return a normal JSON response with a live
+    # Google Maps fallback instead of HTTP 502.
+    osm_service_unavailable = False
     if osm_data is None:
-        if last_error:
-            raise HTTPException(
-                status_code=502,
-                detail=(
-                    "Nearby-place service is temporarily unavailable. "
-                    "All OpenStreetMap Overpass mirrors failed. "
-                    f"Last error: {last_error}"
-                ),
-            )
         osm_data = {"elements": []}
         used_tier = "general"
+        osm_service_unavailable = bool(last_error)
 
     results: list[dict] = []
 
     for element in osm_data.get("elements", []):
         tags = element.get("tags", {}) or {}
+
+        # Safety net for broad fallback searches: never surface a place whose
+        # OSM tags do not belong to the requested device/action domain.
+        if not is_relevant_osm_place(tags, device_type, action):
+            continue
+
         place_lat = element.get("lat")
         place_lng = element.get("lon")
         if place_lat is None or place_lng is None:
@@ -912,7 +1036,42 @@ async def nearby(
         place_lat = float(place_lat)
         place_lng = float(place_lng)
         distance_km = haversine_distance(lat, lng, place_lat, place_lng)
-        name = tags.get("name") or "Unnamed nearby location"
+
+        # Prefer a real OSM name. If OSM has no name, use an existing
+        # brand/operator/reference when available. Otherwise create a
+        # transparent descriptive label from the mapped place category.
+        # This is NOT a fabricated business name.
+        place_type = classify_osm_place(tags, action)
+        name = next(
+            (str(value).strip() for value in (
+                tags.get("name"),
+                tags.get("brand"),
+                tags.get("operator"),
+                tags.get("ref"),
+            ) if value and str(value).strip()),
+            None,
+        )
+        if not name:
+            if tags.get("shop") in {"computer", "electronics", "mobile_phone", "printer_ink", "hifi", "repair"}:
+                name = "Unnamed electronics shop"
+            elif tags.get("craft") == "electronics_repair" or tags.get("repair") in {"yes", "only"}:
+                name = "Unnamed electronics repair location"
+            elif tags.get("amenity") == "recycling":
+                name = "Unnamed recycling facility"
+            elif tags.get("amenity") == "charity" or tags.get("shop") == "charity":
+                name = "Unnamed donation location"
+            elif tags.get("shop") in {"second_hand", "pawnbroker"}:
+                name = "Unnamed reuse / resale shop"
+            elif action_l == "repair":
+                name = "Unnamed repair-related local option"
+            elif action_l in {"sell", "refurbish"}:
+                name = "Unnamed reuse / resale option"
+            elif action_l == "recycle":
+                name = "Unnamed recycling-related option"
+            elif action_l == "donate":
+                name = "Unnamed donation-related option"
+            else:
+                name = "Unnamed local option"
 
         match_score, match_level, match_reasons = score_osm_match(
             tags, device_type, action
@@ -943,8 +1102,8 @@ async def nearby(
         results.append({
             "id": f"osm-{element.get('type')}-{element.get('id')}",
             "name": name,
-            "type": classify_osm_place(tags, action),
-            "action": action.capitalize() if action else classify_osm_place(tags, action),
+            "type": place_type,
+            "action": action_l.capitalize() if action_l else classify_osm_place(tags, action),
             "lat": place_lat,
             "lng": place_lng,
             "distance_km": round(distance_km, 2),
@@ -966,16 +1125,21 @@ async def nearby(
 
     device_label = device_type.replace("_", " ")
     action_label = action_l or "electronics"
-    maps_query = quote(f"{device_label} {action_label} near me")
-    external_search_url = f"https://www.google.com/maps/search/?api=1&query={maps_query}"
+    external_search_url = build_google_maps_search_url(device_type, action)
 
     exhausted = radius_km >= 50 and len(results) == 0
-    if exhausted:
+    if osm_service_unavailable:
+        search_message = (
+            "The live OpenStreetMap map service is temporarily unavailable. "
+            "EcoLoop did not invent or substitute a business. "
+            "Use the live Google Maps search below to review real nearby options."
+        )
+    elif exhausted:
         search_message = (
             "We searched the strongest matches, broader compatible categories, "
             "and general local leads up to 50 km, but the map data did not give "
             f"us a verified {device_label} + {action_label} option. "
-            "We’re sorry for taking your time."
+            "Use the live Google Maps search below to review real nearby alternatives."
         )
     elif used_tier == "general":
         search_message = (
@@ -1002,4 +1166,5 @@ async def nearby(
         "search_message": search_message,
         "exhausted_50km": exhausted,
         "external_search_url": external_search_url,
+        "osm_service_unavailable": osm_service_unavailable,
     }
