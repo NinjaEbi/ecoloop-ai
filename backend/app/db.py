@@ -20,8 +20,10 @@ def initialise() -> None:
         CREATE TABLE IF NOT EXISTS assessments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          session_id TEXT,
           image_path TEXT,
           device_type TEXT NOT NULL,
+          device_category TEXT,
           recognition_status TEXT NOT NULL,
           recognition_confidence REAL NOT NULL,
           manual_assessment INTEGER NOT NULL DEFAULT 0,
@@ -38,6 +40,16 @@ def initialise() -> None:
           stakeholder_category TEXT NOT NULL
         );
         """)
+        # Gentle column migration for existing database files
+        try:
+            cur = conn.execute("PRAGMA table_info(assessments)")
+            existing_cols = {row[1] for row in cur.fetchall()}
+            if "session_id" not in existing_cols:
+                conn.execute("ALTER TABLE assessments ADD COLUMN session_id TEXT")
+            if "device_category" not in existing_cols:
+                conn.execute("ALTER TABLE assessments ADD COLUMN device_category TEXT")
+        except Exception:
+            pass
 
 def insert_assessment(record: dict) -> int:
     columns = list(record)
@@ -48,9 +60,15 @@ def insert_assessment(record: dict) -> int:
         )
         return cursor.lastrowid
 
-def list_assessments(device: str | None = None, recommendation: str | None = None):
+def list_assessments(
+    device: str | None = None,
+    recommendation: str | None = None,
+    session_id: str | None = None,
+):
     query = "SELECT * FROM assessments WHERE 1=1"
     params = []
+    if session_id:
+        query += " AND (session_id = ? OR session_id IS NULL)"; params.append(session_id)
     if device:
         query += " AND device_type = ?"; params.append(device)
     if recommendation:

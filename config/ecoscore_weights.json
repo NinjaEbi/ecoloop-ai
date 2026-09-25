@@ -1,1 +1,8 @@
-{"reuse_potential":30,"condition":25,"repairability":20,"remaining_useful_life":15,"recyclability":10}
+{
+  "working_condition": 25,
+  "physical_condition": 20,
+  "repairability": 20,
+  "device_age": 15,
+  "functional_health": 10,
+  "reuse_potential": 10
+}

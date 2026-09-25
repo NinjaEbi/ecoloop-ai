@@ -1,0 +1,608 @@
+{
+  "weights": {
+    "working_condition": 25,
+    "physical_condition": 20,
+    "repairability": 20,
+    "device_age": 15,
+    "functional_health": 10,
+    "reuse_potential": 10
+  },
+  "devices": [
+    {
+      "id": "smartphone",
+      "name": "Smartphone",
+      "category": "Mobile",
+      "glyph": "📱",
+      "description": "Mobile phones, iPhones, Android smartphones",
+      "mass_kg": 0.19,
+      "embodied_co2_kg": 58.0,
+      "recoverable_materials": ["Gold", "Copper", "Cobalt", "Lithium", "Aluminum", "Polycarbonate"],
+      "specific_questions": [
+        {
+          "key": "battery_condition",
+          "label": "Battery health & runtime",
+          "factor": "functional_health",
+          "options": [
+            {"value": "healthy", "label": "Holds charge all day (80%+ health)", "score": 1.0},
+            {"value": "degraded", "label": "Drains rapidly (needs frequent charging)", "score": 0.55},
+            {"value": "dead_or_swollen", "label": "Dead battery / swelling / only works plugged in", "score": 0.1}
+          ]
+        },
+        {
+          "key": "touch_display",
+          "label": "Touchscreen & display panel",
+          "factor": "functional_health",
+          "options": [
+            {"value": "flawless", "label": "Flawless touch and vibrant display", "score": 1.0},
+            {"value": "minor_touch_glitch", "label": "Screen works but has minor touch dead zones / lines", "score": 0.55},
+            {"value": "broken_or_black", "label": "Black screen / completely broken touch", "score": 0.1}
+          ]
+        },
+        {
+          "key": "charging_ports",
+          "label": "Charging port & wireless charging",
+          "factor": "functional_health",
+          "options": [
+            {"value": "working", "label": "Charges reliably via cable", "score": 1.0},
+            {"value": "loose", "label": "Port is loose / requires specific angle", "score": 0.6},
+            {"value": "not_working", "label": "Charging port completely broken", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "laptop",
+      "name": "Laptop",
+      "category": "Computers",
+      "glyph": "💻",
+      "description": "Notebooks, MacBooks, Ultrabooks, Chromebooks",
+      "mass_kg": 2.2,
+      "embodied_co2_kg": 290.0,
+      "recoverable_materials": ["Aluminum", "Copper", "Gold", "Silver", "Lithium", "Engineering Plastics"],
+      "specific_questions": [
+        {
+          "key": "battery_condition",
+          "label": "Battery health & portability",
+          "factor": "functional_health",
+          "options": [
+            {"value": "healthy", "label": "Holds charge for 3+ hours", "score": 1.0},
+            {"value": "short_life", "label": "Short battery life (under 1 hour)", "score": 0.55},
+            {"value": "dead_or_swollen", "label": "Battery dead (only runs on AC power)", "score": 0.15}
+          ]
+        },
+        {
+          "key": "display_panel",
+          "label": "Display screen & hinges",
+          "factor": "functional_health",
+          "options": [
+            {"value": "perfect", "label": "Clean display, sturdy hinges", "score": 1.0},
+            {"value": "minor_lines_loose_hinge", "label": "Flicker / dead pixels / loose hinge", "score": 0.55},
+            {"value": "cracked_or_no_display", "label": "Cracked screen / broken hinge / no display", "score": 0.1}
+          ]
+        },
+        {
+          "key": "keyboard_trackpad",
+          "label": "Keyboard & trackpad responsiveness",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_working", "label": "All keys and touchpad work smoothly", "score": 1.0},
+            {"value": "some_keys_faulty", "label": "A few unresponsive keys or sticky touchpad", "score": 0.6},
+            {"value": "unresponsive", "label": "Keyboard or touchpad completely broken", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "desktop",
+      "name": "Desktop Computer",
+      "category": "Computers",
+      "glyph": "🖥️",
+      "description": "Towers, All-in-Ones, Mini PCs, Workstations",
+      "mass_kg": 9.5,
+      "embodied_co2_kg": 420.0,
+      "recoverable_materials": ["Steel", "Copper", "Aluminum", "Gold", "Silver", "Soldered Circuit Boards"],
+      "specific_questions": [
+        {
+          "key": "power_boot",
+          "label": "Power supply & boot stability",
+          "factor": "functional_health",
+          "options": [
+            {"value": "reliable", "label": "Powers on reliably and boots quickly", "score": 1.0},
+            {"value": "intermittent", "label": "Occasional restart / takes multiple tries to boot", "score": 0.5},
+            {"value": "no_power", "label": "Does not power on / dead power supply", "score": 0.05}
+          ]
+        },
+        {
+          "key": "display_output",
+          "label": "Graphics / video output",
+          "factor": "functional_health",
+          "options": [
+            {"value": "clear_signal", "label": "Clear video output on all ports (HDMI/DP/VGA)", "score": 1.0},
+            {"value": "artifacts", "label": "Video artifacts / lines / one dead port", "score": 0.55},
+            {"value": "no_signal", "label": "No video signal detected", "score": 0.1}
+          ]
+        },
+        {
+          "key": "cooling_noise",
+          "label": "Cooling fans & thermal performance",
+          "factor": "functional_health",
+          "options": [
+            {"value": "quiet_cool", "label": "Runs cool and quiet", "score": 1.0},
+            {"value": "loud_fans", "label": "Loud fan noise / runs hot under load", "score": 0.6},
+            {"value": "overheating_shutdown", "label": "Thermal throttling / shuts down from heat", "score": 0.15}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tablet",
+      "name": "Tablet",
+      "category": "Mobile",
+      "glyph": "📱",
+      "description": "iPads, Android tablets, e-readers",
+      "mass_kg": 0.48,
+      "embodied_co2_kg": 110.0,
+      "recoverable_materials": ["Aluminum", "Lithium", "Cobalt", "Gold", "Copper", "Display Glass"],
+      "specific_questions": [
+        {
+          "key": "touch_display",
+          "label": "Touchscreen & display panel",
+          "factor": "functional_health",
+          "options": [
+            {"value": "flawless", "label": "Crisp display, responsive multi-touch", "score": 1.0},
+            {"value": "minor_touch_glitch", "label": "Minor touch dead zones or cosmetic scratches", "score": 0.6},
+            {"value": "cracked_unresponsive", "label": "Cracked screen / touch completely unresponsive", "score": 0.1}
+          ]
+        },
+        {
+          "key": "battery_condition",
+          "label": "Battery health & standby time",
+          "factor": "functional_health",
+          "options": [
+            {"value": "healthy", "label": "Holds charge for days of standby/hours of use", "score": 1.0},
+            {"value": "degraded", "label": "Battery drains within 1-2 hours", "score": 0.55},
+            {"value": "dead", "label": "Battery dead / only powers on when plugged in", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "television",
+      "name": "Television",
+      "category": "Audio & Video",
+      "glyph": "📺",
+      "description": "Smart TVs, LED, OLED, LCD televisions",
+      "mass_kg": 14.0,
+      "embodied_co2_kg": 310.0,
+      "recoverable_materials": ["Optical Glass", "Copper", "Aluminum", "Indium", "Circuit Boards", "Flame-Retardant Plastics"],
+      "specific_questions": [
+        {
+          "key": "display_panel",
+          "label": "Picture quality & backlight uniformity",
+          "factor": "functional_health",
+          "options": [
+            {"value": "sharp", "label": "Even backlighting, no vertical lines or dead zones", "score": 1.0},
+            {"value": "dim_or_lines", "label": "Dim backlight patches or thin colored lines", "score": 0.5},
+            {"value": "cracked_or_black", "label": "Cracked panel / black screen / no picture", "score": 0.05}
+          ]
+        },
+        {
+          "key": "audio_speakers",
+          "label": "Built-in speakers & sound clarity",
+          "factor": "functional_health",
+          "options": [
+            {"value": "clear", "label": "Clear, balanced audio at all volumes", "score": 1.0},
+            {"value": "rattling_distorted", "label": "Distorted sound or buzzing speaker grille", "score": 0.6},
+            {"value": "no_sound", "label": "No audio output through speakers", "score": 0.15}
+          ]
+        },
+        {
+          "key": "ports_inputs",
+          "label": "HDMI & audio input ports",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_working", "label": "All HDMI and optical ports detect devices", "score": 1.0},
+            {"value": "some_faulty", "label": "One or two ports loose or not working", "score": 0.65},
+            {"value": "no_ports_work", "label": "Cannot connect external inputs", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monitor",
+      "name": "Monitor",
+      "category": "Computers",
+      "glyph": "🖥️",
+      "description": "Computer displays, gaming monitors, office screens",
+      "mass_kg": 4.8,
+      "embodied_co2_kg": 180.0,
+      "recoverable_materials": ["Glass", "Aluminum", "Copper", "ABS Plastics", "Printed Circuit Boards"],
+      "specific_questions": [
+        {
+          "key": "panel_clarity",
+          "label": "Display panel & pixel health",
+          "factor": "functional_health",
+          "options": [
+            {"value": "clear_no_dead_pixels", "label": "Clean image, no dead pixels or severe backlight bleed", "score": 1.0},
+            {"value": "minor_flicker_pixels", "label": "Occasional flicker or 1-2 stuck pixels", "score": 0.55},
+            {"value": "cracked_or_dead", "label": "Cracked panel or completely black display", "score": 0.05}
+          ]
+        },
+        {
+          "key": "ports_power",
+          "label": "Video inputs (HDMI, DP, USB-C) & power",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_working", "label": "All inputs switch cleanly, powers on instantly", "score": 1.0},
+            {"value": "loose_connection", "label": "Port requires wiggling or power takes long to start", "score": 0.6},
+            {"value": "no_signal_or_power", "label": "No signal detected on any port or no power", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "refrigerator",
+      "name": "Refrigerator",
+      "category": "Home Appliances",
+      "glyph": "❄️",
+      "description": "Fridges, freezers, mini-fridges, double-door refrigerators",
+      "mass_kg": 68.0,
+      "embodied_co2_kg": 520.0,
+      "recoverable_materials": ["Steel", "Copper Tubing", "Aluminum Coils", "Polyurethane Foam", "ABS Liners"],
+      "specific_questions": [
+        {
+          "key": "cooling_efficiency",
+          "label": "Cooling & freezing temperature control",
+          "factor": "functional_health",
+          "options": [
+            {"value": "maintains_temps", "label": "Freezer freezes solid, fridge stays consistently cool", "score": 1.0},
+            {"value": "inconsistent_cooling", "label": "Cooling is weak / ice buildup / uneven temperatures", "score": 0.5},
+            {"value": "not_cooling", "label": "Compressor runs but does not cool at all", "score": 0.05}
+          ]
+        },
+        {
+          "key": "compressor_operation",
+          "label": "Compressor noise & running cycles",
+          "factor": "functional_health",
+          "options": [
+            {"value": "quiet_cycles", "label": "Cycles on and off smoothly, normal hum", "score": 1.0},
+            {"value": "runs_continuously", "label": "Runs continuously without cycling off / loud vibrating", "score": 0.55},
+            {"value": "clicking_not_starting", "label": "Clicking sound or compressor fails to start", "score": 0.1}
+          ]
+        },
+        {
+          "key": "door_seals",
+          "label": "Door gasket & door closure",
+          "factor": "functional_health",
+          "options": [
+            {"value": "airtight_seal", "label": "Magnetic gasket seals tight with zero air leaks", "score": 1.0},
+            {"value": "loose_or_cracked", "label": "Gasket is worn, loose, or causing condensation", "score": 0.6},
+            {"value": "broken_door_hinge", "label": "Door does not shut properly / broken hinge", "score": 0.2}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "washing_machine",
+      "name": "Washing Machine",
+      "category": "Home Appliances",
+      "glyph": "🧺",
+      "description": "Front-load, top-load, and washer-dryer combos",
+      "mass_kg": 62.0,
+      "embodied_co2_kg": 380.0,
+      "recoverable_materials": ["Stainless Steel", "Cast Iron", "Copper Motor Windings", "Polypropylene Plastics"],
+      "specific_questions": [
+        {
+          "key": "motor_drum_spin",
+          "label": "Motor spin & drum rotation",
+          "factor": "functional_health",
+          "options": [
+            {"value": "smooth_spin", "label": "Drum spins smoothly through all cycle speeds", "score": 1.0},
+            {"value": "loud_bearing_wobble", "label": "Excessive bearing roar, vibration, or banging noise", "score": 0.5},
+            {"value": "drum_stuck", "label": "Drum does not turn / motor fails to engage", "score": 0.1}
+          ]
+        },
+        {
+          "key": "water_drainage",
+          "label": "Water intake, drainage & pump",
+          "factor": "functional_health",
+          "options": [
+            {"value": "pumps_normally", "label": "Fills and drains completely on schedule", "score": 1.0},
+            {"value": "slow_drain_or_leak", "label": "Slow to drain or minor hose moisture", "score": 0.55},
+            {"value": "pump_jammed_water_trapped", "label": "Water remains trapped / pump error code", "score": 0.1}
+          ]
+        },
+        {
+          "key": "control_electronics",
+          "label": "Electronic control panel & program cycle",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_cycles_work", "label": "All washing programs run from start to finish", "score": 1.0},
+            {"value": "intermittent_error", "label": "Occasional mid-cycle error or sticky button", "score": 0.6},
+            {"value": "control_board_dead", "label": "Control board does not turn on or crashes", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "air_conditioner",
+      "name": "Air Conditioner",
+      "category": "Home Appliances",
+      "glyph": "❄️",
+      "description": "Split ACs, window ACs, portable air conditioners",
+      "mass_kg": 38.0,
+      "embodied_co2_kg": 440.0,
+      "recoverable_materials": ["Copper Coils", "Aluminum Fins", "Galvanized Steel", "Compressor Motors", "ABS Plastics"],
+      "specific_questions": [
+        {
+          "key": "cooling_airflow",
+          "label": "Cooling performance & airflow output",
+          "factor": "functional_health",
+          "options": [
+            {"value": "blows_cold", "label": "Rapid, powerful cold airflow", "score": 1.0},
+            {"value": "weak_cooling", "label": "Air is cool but takes very long to chill room", "score": 0.5},
+            {"value": "fan_only_warm", "label": "Blows warm room-temperature air only", "score": 0.1}
+          ]
+        },
+        {
+          "key": "compressor_sound",
+          "label": "Outdoor unit / compressor sound",
+          "factor": "functional_health",
+          "options": [
+            {"value": "normal_cycles", "label": "Smooth humming, normal condenser fan", "score": 1.0},
+            {"value": "loud_rattling", "label": "Loud buzzing, vibration, or short-cycling", "score": 0.55},
+            {"value": "compressor_dead", "label": "Outdoor unit completely dead or tripped breaker", "score": 0.1}
+          ]
+        },
+        {
+          "key": "remote_sensors",
+          "label": "Remote control & thermostat response",
+          "factor": "functional_health",
+          "options": [
+            {"value": "accurate_responsive", "label": "Responsive remote, accurate temperature sensor", "score": 1.0},
+            {"value": "minor_sensor_quirk", "label": "Temperature reading slightly off or sluggish remote", "score": 0.65},
+            {"value": "unresponsive", "label": "Display dead / controls unresponsive", "score": 0.15}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "printer",
+      "name": "Printer",
+      "category": "Peripherals",
+      "glyph": "🖨️",
+      "description": "Inkjet, laser printers, all-in-one multifunction units",
+      "mass_kg": 5.5,
+      "embodied_co2_kg": 85.0,
+      "recoverable_materials": ["ABS Plastics", "Steel Rods", "Copper Stepper Motors", "Optical Glass", "Power Circuitry"],
+      "specific_questions": [
+        {
+          "key": "print_quality",
+          "label": "Print output quality & paper feed",
+          "factor": "functional_health",
+          "options": [
+            {"value": "crisp_text_feeds_well", "label": "Crisp text and reliable paper feeding", "score": 1.0},
+            {"value": "streaks_or_minor_jams", "label": "Occasional paper misfeed or faint streaks", "score": 0.55},
+            {"value": "constant_jam_or_smudged", "label": "Frequent paper jams or completely illegible", "score": 0.1}
+          ]
+        },
+        {
+          "key": "connectivity_scanner",
+          "label": "Connectivity (Wi-Fi/USB) & scanner glass",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_features_work", "label": "Connects seamlessly, scanner scans cleanly", "score": 1.0},
+            {"value": "usb_only_or_slow", "label": "Wi-Fi is intermittent (USB works fine)", "score": 0.65},
+            {"value": "cannot_connect", "label": "Computer fails to detect printer / fatal hardware error", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "keyboard",
+      "name": "Keyboard",
+      "category": "Peripherals",
+      "glyph": "⌨️",
+      "description": "Mechanical, membrane, Bluetooth, ergonomic keyboards",
+      "mass_kg": 0.75,
+      "embodied_co2_kg": 18.0,
+      "recoverable_materials": ["PBT/ABS Plastics", "Copper Cabling", "Metal Backplates", "PCB Switches"],
+      "specific_questions": [
+        {
+          "key": "key_actuation",
+          "label": "Key responsiveness & typing feel",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_keys_working", "label": "All keys type cleanly with zero missed strokes", "score": 1.0},
+            {"value": "few_keys_sticky", "label": "1 or 2 keys require firm press or stick slightly", "score": 0.6},
+            {"value": "dead_row_or_spamming", "label": "Multiple dead keys or ghosting/spamming strokes", "score": 0.1}
+          ]
+        },
+        {
+          "key": "connectivity_cable",
+          "label": "USB cable, wireless dongle or Bluetooth",
+          "factor": "functional_health",
+          "options": [
+            {"value": "reliable_connection", "label": "Connects instantly with solid signal", "score": 1.0},
+            {"value": "intermittent_loose", "label": "Cable needs specific angle or occasional disconnect", "score": 0.55},
+            {"value": "no_connection", "label": "Frayed wire / not recognized by computer", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mouse",
+      "name": "Mouse",
+      "category": "Peripherals",
+      "glyph": "🖱️",
+      "description": "Optical, laser, wireless, gaming, trackball mice",
+      "mass_kg": 0.12,
+      "embodied_co2_kg": 6.0,
+      "recoverable_materials": ["ABS Plastic Housing", "Copper Wire", "Microswitches", "Optical Sensors"],
+      "specific_questions": [
+        {
+          "key": "sensor_tracking",
+          "label": "Optical/laser cursor tracking precision",
+          "factor": "functional_health",
+          "options": [
+            {"value": "smooth_accurate", "label": "Smooth, accurate tracking on standard surfaces", "score": 1.0},
+            {"value": "occasional_jitter", "label": "Occasional stutter or erratic jump", "score": 0.55},
+            {"value": "sensor_dead", "label": "Cursor does not move / sensor light unlit", "score": 0.05}
+          ]
+        },
+        {
+          "key": "clicks_scroll",
+          "label": "Left/Right click switches & scroll wheel",
+          "factor": "functional_health",
+          "options": [
+            {"value": "tactile_clicks", "label": "Crisp clicks and smooth, stepped scrolling", "score": 1.0},
+            {"value": "double_clicking_or_jump", "label": "Occasional double-click or scroll jump", "score": 0.55},
+            {"value": "broken_switches", "label": "Click switches stuck or scroll wheel loose/broken", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "router",
+      "name": "Router",
+      "category": "Networking",
+      "glyph": "📡",
+      "description": "Wi-Fi routers, mesh nodes, modems, switches",
+      "mass_kg": 0.45,
+      "embodied_co2_kg": 32.0,
+      "recoverable_materials": ["Aluminum Heat Sinks", "Copper Antennas", "FR-4 PCB", "Polycarbonate Casing"],
+      "specific_questions": [
+        {
+          "key": "wifi_signal",
+          "label": "Wi-Fi signal strength & data speed",
+          "factor": "functional_health",
+          "options": [
+            {"value": "strong_stable", "label": "Strong, fast Wi-Fi signal across full range", "score": 1.0},
+            {"value": "occasional_drops", "label": "Periodic dropouts requiring restart once a week", "score": 0.55},
+            {"value": "no_wifi_broadcast", "label": "Wi-Fi network does not broadcast / constant dropouts", "score": 0.1}
+          ]
+        },
+        {
+          "key": "ethernet_ports_power",
+          "label": "Ethernet LAN/WAN ports & power adapter",
+          "factor": "functional_health",
+          "options": [
+            {"value": "all_ports_active", "label": "All Gigabit ports detect cables and link up", "score": 1.0},
+            {"value": "one_dead_port", "label": "One port unresponsive, rest working fine", "score": 0.65},
+            {"value": "unreliable_power", "label": "Power port loose or ports fail to transmit data", "score": 0.15}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "speaker",
+      "name": "Speaker / Audio Device",
+      "category": "Audio & Video",
+      "glyph": "🔊",
+      "description": "Bluetooth speakers, soundbars, amplifiers, smart speakers",
+      "mass_kg": 1.8,
+      "embodied_co2_kg": 45.0,
+      "recoverable_materials": ["Ferrite / Neodymium Magnets", "Copper Voice Coils", "Aluminum Casing", "Printed Amplifier Boards"],
+      "specific_questions": [
+        {
+          "key": "audio_clarity",
+          "label": "Audio clarity & speaker cone integrity",
+          "factor": "functional_health",
+          "options": [
+            {"value": "rich_clear_sound", "label": "Rich, punchy sound with zero crackle or distortion", "score": 1.0},
+            {"value": "minor_distortion_high_vol", "label": "Minor buzz or distortion only at high volumes", "score": 0.6},
+            {"value": "heavily_distorted_or_mute", "label": "Distorted, muffled sound or one channel completely dead", "score": 0.15}
+          ]
+        },
+        {
+          "key": "connectivity_battery",
+          "label": "Bluetooth pairing, Aux 3.5mm & battery life",
+          "factor": "functional_health",
+          "options": [
+            {"value": "pairs_and_plays", "label": "Pairs instantly, solid range, good battery life", "score": 1.0},
+            {"value": "aux_only_or_short_battery", "label": "Works primarily plugged in or Bluetooth requires retries", "score": 0.6},
+            {"value": "no_connection_or_power", "label": "Fails to pair, broken port, or does not turn on", "score": 0.1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "other",
+      "name": "Other Electronics",
+      "category": "General",
+      "glyph": "🔌",
+      "description": "Other electrical appliances, power tools, smart home devices",
+      "mass_kg": 1.5,
+      "embodied_co2_kg": 40.0,
+      "recoverable_materials": ["Recyclable Plastics", "Copper Cabling", "Steel Fasteners", "Circuit Boards"],
+      "specific_questions": [
+        {
+          "key": "power_status",
+          "label": "Power on & electrical stability",
+          "factor": "functional_health",
+          "options": [
+            {"value": "turns_on_reliably", "label": "Powers on reliably and indicates status properly", "score": 1.0},
+            {"value": "intermittent_power", "label": "Powers on intermittently or runs hot", "score": 0.5},
+            {"value": "no_power_or_fault", "label": "Completely dead or trips circuit breaker", "score": 0.05}
+          ]
+        },
+        {
+          "key": "core_function",
+          "label": "Main intended operating task",
+          "factor": "functional_health",
+          "options": [
+            {"value": "performs_task_well", "label": "Performs its primary task without issues", "score": 1.0},
+            {"value": "reduced_performance", "label": "Noticeably reduced performance or partial function", "score": 0.55},
+            {"value": "fails_primary_task", "label": "Cannot perform its intended function", "score": 0.1}
+          ]
+        }
+      ]
+    }
+  ],
+  "common_questions": [
+    {
+      "key": "age_years",
+      "label": "Approximately how old is this device?",
+      "factor": "device_age",
+      "options": [
+        {"value": "0", "label": "Less than 1 year (New / Recent)", "score": 1.0},
+        {"value": "1-2", "label": "1 – 2 years", "score": 0.85},
+        {"value": "3-4", "label": "3 – 4 years", "score": 0.65},
+        {"value": "5-7", "label": "5 – 7 years", "score": 0.40},
+        {"value": "8+", "label": "8+ years (Vintage / Older)", "score": 0.15}
+      ]
+    },
+    {
+      "key": "working_status",
+      "label": "What is the overall working status?",
+      "factor": "working_condition",
+      "options": [
+        {"value": "fully_working", "label": "Fully working (all core features operate as intended)", "score": 1.0},
+        {"value": "partially_working", "label": "Partially working (minor issue, but still usable)", "score": 0.65},
+        {"value": "major_issues", "label": "Major issue (frequently crashes, fails, or unstable)", "score": 0.30},
+        {"value": "not_working", "label": "Not working (dead, will not turn on or run)", "score": 0.05}
+      ]
+    },
+    {
+      "key": "visible_damage",
+      "label": "How would you describe the physical condition?",
+      "factor": "physical_condition",
+      "options": [
+        {"value": "none", "label": "Pristine / Excellent (no visible scratches or wear)", "score": 1.0},
+        {"value": "minor", "label": "Good (minor cosmetic scuffs or light scratches only)", "score": 0.70},
+        {"value": "moderate", "label": "Fair (noticeable dents, deep scratches, minor casing crack)", "score": 0.40},
+        {"value": "major", "label": "Poor (cracked glass/screen, broken frame, heavy dents)", "score": 0.10}
+      ]
+    },
+    {
+      "key": "repairability",
+      "label": "How repairable or modular is this device?",
+      "factor": "repairability",
+      "options": [
+        {"value": "easy", "label": "High (standard screws, readily available spare parts, modular)", "score": 1.0},
+        {"value": "moderate", "label": "Moderate (requires common tools, replacement parts obtainable)", "score": 0.65},
+        {"value": "difficult", "label": "Low / Difficult (heavily glued, proprietary parts, or obsolete)", "score": 0.20}
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import json
 import math
 import uuid
+from typing import Any
 from urllib.parse import quote
 
 import httpx
@@ -23,10 +24,14 @@ from .schemas import (
     AnalyzeResponse,
     AssessmentRequest,
     AssessmentResponse,
+    ChatRequest,
+    ChatResponse,
 )
 from .services.assessment import score_assessment
+from .services.chatbot import answer_chat_message
 from .services.image_validation import inspect_image
 from .services.model_service import get_model, predict_device
+from .services.scoring_engine import load_definitions, normalize_device_type
 
 
 app = FastAPI(
@@ -44,9 +49,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:3000",
+        "http://localhost:4173",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:4173",
         "https://frontend-sooty-theta-39.vercel.app",
     ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,6 +106,37 @@ def health():
             "model_status": "unavailable",
             "error": str(exc),
         }
+
+
+# ============================================================
+# DEVICE CONFIGURATION
+# ============================================================
+
+@app.get("/api/config/devices")
+def get_device_configuration():
+    """Return centralized configuration for all supported devices and questions."""
+    return load_definitions()
+
+
+# ============================================================
+# CIRCULAR ECONOMY CHATBOT & GUIDANCE
+# ============================================================
+
+@app.post("/api/chat", response_model=ChatResponse)
+def chat_endpoint(request: ChatRequest):
+    """
+    EcoLoop AI Decision Guidance Assistant.
+    Provides explainable guidance, EcoScore factor explanations, and safe disposal advice.
+    Does NOT calculate or alter the EcoScore.
+    """
+    import importlib
+    from .services import chatbot as cb_mod
+    importlib.reload(cb_mod)
+    return cb_mod.answer_chat_message(
+        request.message,
+        assessment_context=request.assessment_context,
+        page_context=request.page_context,
+    )
 
 
 # ============================================================
@@ -248,12 +293,17 @@ def create_assessment(request: AssessmentRequest):
         action,
         explanation,
         stakeholder,
+        reasons,
+        env_impact,
+        breakdown_details,
     ) = score_assessment(
         request.device_type,
         request.answers,
     )
 
     record = {
+        "session_id": request.session_id,
+        "device_category": request.device_category,
         "image_path": request.image_path,
         "device_type": request.device_type,
         "recognition_status": request.recognition_status,
@@ -277,6 +327,9 @@ def create_assessment(request: AssessmentRequest):
     return format_response(
         assessment_id,
         record,
+        reasons=reasons,
+        env_impact=env_impact,
+        breakdown_details=breakdown_details,
     )
 
 
@@ -287,6 +340,9 @@ def create_assessment(request: AssessmentRequest):
 def format_response(
     assessment_id,
     record,
+    reasons: list[str] | None = None,
+    env_impact: dict[str, Any] | None = None,
+    breakdown_details: dict[str, Any] | None = None,
 ):
     score = record["ecoscore"]
 
@@ -303,6 +359,8 @@ def format_response(
 
     return AssessmentResponse(
         id=assessment_id,
+        session_id=record.get("session_id"),
+        device_category=record.get("device_category"),
         device_type=record["device_type"],
         condition=record["condition"],
         condition_score=record["condition_score"],
@@ -327,7 +385,12 @@ def format_response(
             "Functional symptoms are user-reported.",
             "EcoScore is a Phase-1 methodology, not a scientific LCA.",
         ],
+        recommendation_reasons=reasons or [],
+        environmental_impact=env_impact or {},
+        breakdown_details=breakdown_details or {},
     )
+
+
 
 
 # ============================================================
@@ -338,10 +401,12 @@ def format_response(
 def assessments(
     device: str | None = None,
     recommendation: str | None = None,
+    session_id: str | None = None,
 ):
     return list_assessments(
         device,
         recommendation,
+        session_id,
     )
 
 
@@ -497,6 +562,7 @@ def haversine_distance(
 
 def device_profile(device_type: str | None) -> dict:
     """Return OSM tags used to match a device category."""
+    norm = normalize_device_type(device_type)
     profiles = {
         "smartphone": {
             "shops": ["mobile_phone", "electronics"],
@@ -511,6 +577,13 @@ def device_profile(device_type: str | None) -> dict:
             "repair_values": ['laptop', 'computer'],
             "recycle_tags": ['recycling:computers'],
             "keywords": ["computer", "laptop", "electronics"],
+        },
+        "desktop": {
+            "shops": ["computer", "electronics"],
+            "repair_tags": ['computer:repair', 'electronics_repair'],
+            "repair_values": ['computer', 'pc', 'desktop'],
+            "recycle_tags": ['recycling:computers', 'recycling:electrical_appliances'],
+            "keywords": ["computer", "desktop", "pc", "electronics"],
         },
         "tablet": {
             "shops": ["mobile_phone", "computer", "electronics"],
@@ -533,6 +606,34 @@ def device_profile(device_type: str | None) -> dict:
             "recycle_tags": ['recycling:tv_monitor', 'recycling:computers'],
             "keywords": ["monitor", "computer", "electronics"],
         },
+        "refrigerator": {
+            "shops": ["appliance", "electronics", "second_hand"],
+            "repair_tags": ['appliance:repair', 'electronics_repair'],
+            "repair_values": ['refrigerator', 'fridge', 'appliance'],
+            "recycle_tags": ['recycling:large_appliances', 'recycling:electrical_appliances'],
+            "keywords": ["refrigerator", "fridge", "appliance"],
+        },
+        "washing_machine": {
+            "shops": ["appliance", "electronics", "second_hand"],
+            "repair_tags": ['appliance:repair', 'electronics_repair'],
+            "repair_values": ['washing_machine', 'washer', 'appliance'],
+            "recycle_tags": ['recycling:large_appliances', 'recycling:electrical_appliances'],
+            "keywords": ["washing machine", "washer", "appliance"],
+        },
+        "air_conditioner": {
+            "shops": ["appliance", "electronics", "hvac"],
+            "repair_tags": ['appliance:repair', 'hvac:repair', 'electronics_repair'],
+            "repair_values": ['ac', 'air_conditioner', 'hvac'],
+            "recycle_tags": ['recycling:large_appliances', 'recycling:electrical_appliances'],
+            "keywords": ["air conditioner", "ac", "hvac"],
+        },
+        "printer": {
+            "shops": ["computer", "electronics", "printer_ink"],
+            "repair_tags": ['computer:repair', 'electronics_repair', 'printer:repair'],
+            "repair_values": ['computer', 'printer'],
+            "recycle_tags": ['recycling:small_electrical_appliances'],
+            "keywords": ["printer", "computer", "electronics"],
+        },
         "keyboard": {
             "shops": ["computer", "electronics"],
             "repair_tags": ['computer:repair', 'electronics_repair'],
@@ -547,21 +648,29 @@ def device_profile(device_type: str | None) -> dict:
             "recycle_tags": ['recycling:small_electrical_appliances'],
             "keywords": ["mouse", "computer", "electronics"],
         },
-        "printer": {
-            "shops": ["computer", "electronics", "printer_ink"],
-            "repair_tags": ['computer:repair', 'electronics_repair', 'printer:repair'],
-            "repair_values": ['computer', 'printer'],
+        "router": {
+            "shops": ["computer", "electronics"],
+            "repair_tags": ['computer:repair', 'electronics_repair'],
+            "repair_values": ['computer', 'router'],
             "recycle_tags": ['recycling:small_electrical_appliances'],
-            "keywords": ["printer", "computer", "electronics"],
+            "keywords": ["router", "network", "electronics"],
+        },
+        "speaker": {
+            "shops": ["electronics", "hifi"],
+            "repair_tags": ['hifi:repair', 'electronics_repair'],
+            "repair_values": ['speaker', 'audio', 'hifi'],
+            "recycle_tags": ['recycling:small_electrical_appliances'],
+            "keywords": ["speaker", "audio", "hifi", "electronics"],
+        },
+        "other": {
+            "shops": ["electronics", "computer", "mobile_phone", "second_hand"],
+            "repair_tags": ['repair', 'electronics_repair'],
+            "repair_values": ['yes', 'only'],
+            "recycle_tags": ['recycling:small_electrical_appliances', 'recycling:electrical_appliances'],
+            "keywords": ["electronics"],
         },
     }
-    return profiles.get(device_type or "", profiles["smartphone"] if False else {
-        "shops": ["electronics", "computer", "mobile_phone", "second_hand"],
-        "repair_tags": ['repair', 'electronics_repair'],
-        "repair_values": ['yes', 'only'],
-        "recycle_tags": ['recycling:small_electrical_appliances', 'recycling:electrical_appliances'],
-        "keywords": ["electronics"],
-    })
+    return profiles.get(norm, profiles["other"])
 
 
 def build_overpass_query(
@@ -907,18 +1016,26 @@ def build_google_maps_search_url(device_type: str, action: str | None) -> str:
     This is a search hand-off, not a claim that Google Maps has verified a
     particular business. The user can review the live results before visiting.
     """
+    norm = normalize_device_type(device_type)
     device_labels = {
         "smartphone": "smartphone",
         "laptop": "laptop",
+        "desktop": "desktop computer",
+        "desktop_computer": "desktop computer",
         "tablet": "tablet",
         "television": "TV",
         "monitor": "monitor",
+        "refrigerator": "refrigerator",
+        "washing_machine": "washing machine",
+        "air_conditioner": "air conditioner",
+        "printer": "printer",
         "keyboard": "computer keyboard",
         "mouse": "computer mouse",
-        "printer": "printer",
+        "router": "Wi-Fi router",
+        "speaker": "audio speaker",
         "other": "electronics device",
     }
-    device_label = device_labels.get(device_type, device_type.replace("_", " "))
+    device_label = device_labels.get(norm, norm.replace("_", " "))
     action_l = (action or "").lower()
     action_queries = {
         "repair": f"{device_label} repair near me",
@@ -963,12 +1080,14 @@ async def nearby(
         raise HTTPException(status_code=400, detail="Invalid action.")
 
     allowed_devices = {
-        "smartphone", "laptop", "tablet", "television", "monitor",
-        "keyboard", "mouse", "printer", "other",
+        "smartphone", "laptop", "desktop", "desktop_computer", "tablet",
+        "television", "monitor", "refrigerator", "washing_machine",
+        "air_conditioner", "printer", "keyboard", "mouse", "router",
+        "speaker", "other",
     }
     if device_type and device_type.lower() not in allowed_devices:
         raise HTTPException(status_code=400, detail="Invalid device_type.")
-    device_type = device_type.lower() if device_type else "other"
+    device_type = normalize_device_type(device_type) if device_type else "other"
 
     if not 1 <= radius_km <= 50:
         raise HTTPException(status_code=400, detail="radius_km must be between 1 and 50.")

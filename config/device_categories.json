@@ -1,1 +1,20 @@
-{"phase_1_targets":["smartphone","laptop","tablet","television","monitor","keyboard","mouse","printer"],"model_status":"No local verified training dataset or trained model was present during initial implementation."}
+{
+  "phase_1_targets": [
+    "smartphone",
+    "laptop",
+    "desktop",
+    "tablet",
+    "television",
+    "monitor",
+    "refrigerator",
+    "washing_machine",
+    "air_conditioner",
+    "printer",
+    "keyboard",
+    "mouse",
+    "router",
+    "speaker",
+    "other"
+  ],
+  "model_status": "Centralized rule-based assessment config active for 15 supported device types."
+}
