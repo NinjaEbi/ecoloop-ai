@@ -1,5 +1,6 @@
 import json
 import math
+import os
 import uuid
 from typing import Any
 from urllib.parse import quote
@@ -45,22 +46,31 @@ app = FastAPI(
 # CORS
 # ============================================================
 
+env_allowed_origins = [
+    orig.strip()
+    for orig in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if orig.strip()
+]
+
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:4173",
+    "https://ecoloop-led9pc3u8-ninjaebis-projects.vercel.app",
+    "https://frontend-sooty-theta-39.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:3000",
-        "http://localhost:4173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:4173",
-        "https://frontend-sooty-theta-39.vercel.app",
-    ],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=list(set(DEFAULT_ALLOWED_ORIGINS + env_allowed_origins)),
+    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://([a-zA-Z0-9_-]+\.)*vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,10 +93,12 @@ def startup():
 
 
 # ============================================================
-# HEALTH
+# HEALTH & ROOT
 # ============================================================
 
+@app.get("/")
 @app.get("/api/health")
+@app.get("/health")
 def health():
     try:
         get_model()
@@ -113,6 +125,7 @@ def health():
 # ============================================================
 
 @app.get("/api/config/devices")
+@app.get("/config/devices")
 def get_device_configuration():
     """Return centralized configuration for all supported devices and questions."""
     return load_definitions()
@@ -123,6 +136,7 @@ def get_device_configuration():
 # ============================================================
 
 @app.post("/api/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest):
     """
     EcoLoop AI Decision Guidance Assistant.
@@ -144,6 +158,7 @@ def chat_endpoint(request: ChatRequest):
 # ============================================================
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
+@app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(image: UploadFile = File(...)):
 
     # --------------------------------------------------------
@@ -280,6 +295,10 @@ async def analyze(image: UploadFile = File(...)):
     "/api/assessment",
     response_model=AssessmentResponse,
 )
+@app.post(
+    "/assessment",
+    response_model=AssessmentResponse,
+)
 def create_assessment(request: AssessmentRequest):
 
     (
@@ -398,6 +417,7 @@ def format_response(
 # ============================================================
 
 @app.get("/api/assessments")
+@app.get("/assessments")
 def assessments(
     device: str | None = None,
     recommendation: str | None = None,
@@ -411,6 +431,7 @@ def assessments(
 
 
 @app.get("/api/assessments/{assessment_id}")
+@app.get("/assessments/{assessment_id}")
 def assessment(assessment_id: int):
 
     item = get_assessment(assessment_id)
@@ -437,6 +458,7 @@ def assessment(assessment_id: int):
 # ============================================================
 
 @app.get("/api/dashboard")
+@app.get("/dashboard")
 def get_dashboard():
     return dashboard()
 
@@ -446,6 +468,7 @@ def get_dashboard():
 # ============================================================
 
 @app.get("/api/stakeholders")
+@app.get("/stakeholders")
 def stakeholders(
     action: str | None = None,
     radius_km: float = 10,
@@ -1052,6 +1075,7 @@ def build_google_maps_search_url(device_type: str, action: str | None) -> str:
 
 
 @app.get("/api/stakeholders/nearby")
+@app.get("/stakeholders/nearby")
 async def nearby(
     lat: float,
     lng: float,
